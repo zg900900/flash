@@ -87,7 +87,7 @@ export async function performMeasurement(
     // Update job in database with results
     await pool.query(
       `UPDATE jobs SET status=$1, result=$2, updated_at=now() WHERE id=$3`,
-      ["completed", result, jobId]
+      ["done", result, jobId]
     );
 
     // Publish success update via Redis
@@ -95,7 +95,7 @@ export async function performMeasurement(
       "job_updates",
       JSON.stringify({
         jobId,
-        status: "completed",
+        status: "done",
         result
       })
     );

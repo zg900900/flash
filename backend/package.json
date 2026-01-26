@@ -6,7 +6,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "migrate": "ts-node src/scripts/migrate.ts"
+    "migrate": "ts-node scripts/migrate.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",

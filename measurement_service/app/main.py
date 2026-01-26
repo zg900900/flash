@@ -46,6 +46,8 @@ def upload_bytes_to_s3(buffer: bytes, key: str, content_type: str = "image/png")
     url = f"{endpoint}/{S3_BUCKET}/{key}" if endpoint else f"{S3_BUCKET}/{key}"
     return key, url
 
+# NOTE: @app.on_event is deprecated in FastAPI 0.109.1+
+# For production, consider migrating to lifespan context manager
 @app.on_event("startup")
 async def startup_event():
     if DETECTRON2_AVAILABLE:

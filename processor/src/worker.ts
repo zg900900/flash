@@ -175,8 +175,9 @@ async function processMeasurement(job: any) {
       error_estimate_cm: Math.max(1.0, Math.round((1.0 / Math.max(0.0001, metersPerPixel)) * 100) / 100) // dummy
     };
 
-    // update jobs table
-    await PGPOOL.query("UPDATE jobs SET status=$1, result=$2, updated_at=now() WHERE id=$3", ["done", { parts: [part], pose: null, overallConfidence: 0.6 }, job.data.jobId]);
+    // update jobs table (confidence configurable via env)
+    const overallConfidence = Number(process.env.MEASUREMENT_CONFIDENCE_THRESHOLD || 0.6);
+    await PGPOOL.query("UPDATE jobs SET status=$1, result=$2, updated_at=now() WHERE id=$3", ["done", { parts: [part], pose: null, overallConfidence }, job.data.jobId]);
 
     // publish update
     const endpoint = S3_ENDPOINT ? S3_ENDPOINT.replace(/\/+$/, "") : "";
