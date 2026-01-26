@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+numpy
+opencv-python
+pillow
+boto3
+# torch + torchvision required for Detectron2: install matching versions manually (see README)

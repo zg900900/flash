@@ -1,0 +1,35 @@
+# GPU-ready Dockerfile (example for CUDA 11.7 + torch 1.13.1 + detectron2)
+# IMPORTANT: If your environment differs, provide your CUDA and torch versions and I will generate precise wheel install lines.
+
+FROM nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-dev build-essential git curl \
+    libglib2.0-0 libsm6 libxext6 libxrender-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python tooling
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
+# Install torch + torchvision for CUDA 11.7 (torch 1.13.1)
+RUN pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 -f https://download.pytorch.org/whl/cu117/torch_stable.html
+
+# Install detectron2 wheel matching torch+cu117
+RUN pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu117/torch1.13/index.html
+
+# Copy app and requirements
+COPY ./app /app/app
+COPY requirements.txt /app/requirements.txt
+
+# Install remaining deps (fastapi, numpy, opencv, pillow, boto3)
+RUN pip install -r /app/requirements.txt
+
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

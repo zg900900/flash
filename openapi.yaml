@@ -1,0 +1,326 @@
+openapi: 3.0.3
+info:
+  title: POD Designer Demo API
+  version: 0.1.0
+servers:
+  - url: http://localhost:4000
+    description: Backend API
+  - url: http://localhost:8000
+    description: Measurement Service
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /api/uploads:
+    post:
+      summary: Upload an image to S3/MinIO
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                metadata:
+                  type: string
+                  description: JSON string (e.g. exif)
+      responses:
+        '200':
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+  /api/uploads/process:
+    post:
+      summary: Enqueue image-processing job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                actions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Job enqueued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: integer
+  /api/uploads/jobs/{id}:
+    get:
+      summary: Query job status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Job info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /api/masks:
+    post:
+      summary: Upload mask (JSON dataUrl or multipart file)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dataUrl:
+                  type: string
+                name:
+                  type: string
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Mask stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/S3Object'
+  /api/templates:
+    get:
+      summary: List templates
+      responses:
+        '200':
+          description: List
+    post:
+      summary: Save template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplatePayload'
+      responses:
+        '201':
+          description: Created
+  /api/measurements:
+    post:
+      summary: Enqueue measurement job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: integer
+  /api/measurements/{id}:
+    get:
+      summary: Query measurement job
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      responses:
+        '200':
+          description: Job result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /infer:
+    post:
+      summary: Measurement service inference
+      servers:
+        - url: http://localhost:8000
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                W:
+                  type: number
+                unit:
+                  type: string
+                  enum: [mm, cm, m]
+      responses:
+        '200':
+          description: Inference result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InferResponse'
+components:
+  schemas:
+    UploadResponse:
+      type: object
+      properties:
+        url:
+          type: string
+        key:
+          type: string
+    S3Object:
+      type: object
+      properties:
+        key:
+          type: string
+        url:
+          type: string
+    TemplatePayload:
+      type: object
+      properties:
+        name:
+          type: string
+        design:
+          type: object
+        assets:
+          type: array
+          items:
+            type: string
+        measurement:
+          type: object
+        calibration:
+          type: object
+    MeasurementRequest:
+      type: object
+      properties:
+        imageKey:
+          type: string
+        vehicle:
+          type: object
+          properties:
+            L: { type: number }
+            W: { type: number }
+            H: { type: number }
+            unit:
+              type: string
+              enum: [mm, cm, m]
+            modelId:
+              type: string
+        userRefPoints:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              x: { type: number }
+              y: { type: number }
+        options:
+          type: object
+          properties:
+            detectParts: { type: boolean }
+            refineWithPNP: { type: boolean }
+    Job:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { type: string }
+        payload: { type: object }
+        status: { type: string, enum: [queued, processing, done, failed] }
+        result:
+          type: object
+          properties:
+            parts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Part'
+            overallConfidence:
+              type: number
+    Part:
+      type: object
+      properties:
+        name: { type: string }
+        polygon:
+          type: array
+          items:
+            type: object
+            properties:
+              x: { type: number }
+              y: { type: number }
+        rectifiedKey: { type: string }
+        rectifiedUrl: { type: string }
+        maskKey: { type: string }
+        maskUrl: { type: string }
+        rectifiedPx:
+          type: object
+          properties:
+            w: { type: number }
+            h: { type: number }
+        physicalSize:
+          type: object
+          properties:
+            width_m: { type: number }
+            height_m: { type: number }
+            area_m2: { type: number }
+    InferResponse:
+      type: object
+      properties:
+        part:
+          type: object
+          properties:
+            name: { type: string }
+            polygon:
+              type: array
+              items:
+                type: object
+                properties:
+                  x: { type: number }
+                  y: { type: number }
+            bbox:
+              type: array
+              items: { type: number }
+            rectified_key: { type: string }
+            rectified_url: { type: string }
+            mask_key: { type: string }
+            mask_url: { type: string }
+        image_size:
+          type: object
+          properties:
+            w: { type: number }
+            h: { type: number }
+        detection:
+          type: object
+          properties:
+            detectron2: { type: boolean }
+        physical_estimate:
+          type: object
+          properties:
+            vehicle_W_m: { type: number }
+            bbox_w_px: { type: number }
+            meters_per_pixel: { type: number }

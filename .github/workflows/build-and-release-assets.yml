@@ -1,0 +1,88 @@
+name: Build Images and Publish Release Assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (optional)
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build backend image
+        run: |
+          docker build -t pod-designer-backend:${{ env.TAG }} ./backend
+
+      - name: Build frontend image
+        run: |
+          docker build -t pod-designer-frontend:${{ env.TAG }} ./frontend
+
+      - name: Build processor image
+        run: |
+          docker build -t pod-designer-processor:${{ env.TAG }} ./processor
+
+      - name: Save images to tar.gz
+        run: |
+          mkdir -p artifacts
+          docker save pod-designer-backend:${{ env.TAG }} | gzip -9 > artifacts/backend-${{ env.TAG }}.tar.gz
+          docker save pod-designer-frontend:${{ env.TAG }} | gzip -9 > artifacts/frontend-${{ env.TAG }}.tar.gz
+          docker save pod-designer-processor:${{ env.TAG }} | gzip -9 > artifacts/processor-${{ env.TAG }}.tar.gz
+          sha256sum artifacts/*.tar.gz > artifacts/images-${{ env.TAG }}.sha256
+
+      - name: Create or update release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ env.TAG }}
+          release_name: Release ${{ env.TAG }}
+          body: "Built images for ${{ env.TAG }}"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload backend asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/backend-${{ env.TAG }}.tar.gz
+          asset_name: backend-${{ env.TAG }}.tar.gz
+          asset_content_type: application/gzip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload frontend asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/frontend-${{ env.TAG }}.tar.gz
+          asset_name: frontend-${{ env.TAG }}.tar.gz
+          asset_content_type: application/gzip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload processor asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/processor-${{ env.TAG }}.tar.gz
+          asset_name: processor-${{ env.TAG }}.tar.gz
+          asset_content_type: application/gzip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Random Joke Generator</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding: 24px; background:#f7fafc; color:#111; }
+    .card { background:#fff; padding:20px; border-radius:8px; box-shadow:0 6px 18px rgba(15,23,42,0.08); max-width:720px; margin:auto; }
+    button { background:#0b79f7; color:#fff; border:0; padding:10px 14px; border-radius:6px; cursor:pointer; }
+    button:disabled { opacity:0.6; cursor:not-allowed; }
+    .meta { margin-top:12px; color:#555; font-size:13px; }
+    .actions { margin-top:14px; display:flex; gap:8px; }
+    .small { font-size:13px; color:#666 }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Random Joke Generator</h2>
+    <div id="joke" style="min-height:80px; font-size:18px; line-height:1.4;">Click "New joke" to fetch a joke.</div>
+    <div class="meta" id="meta"></div>
+    <div class="actions">
+      <button id="btn">New joke</button>
+      <button id="copyBtn">Copy</button>
+      <button id="tweetBtn">Share on Twitter</button>
+    </div>
+    <div class="small" style="margin-top:12px;">
+      Source: <a href="https://v2.jokeapi.dev" target="_blank" rel="noreferrer">JokeAPI</a> · Filter: safe + single-line jokes
+    </div>
+  </div>
+
+  <script>
+    // Use JokeAPI: https://v2.jokeapi.dev
+    // Request single-line jokes and filter inappropriate categories
+    const API_URL = "https://v2.jokeapi.dev/joke/Any?type=single&blacklistFlags=nsfw,religious,political,racist,sexist,explicit";
+
+    const btn = document.getElementById("btn");
+    const jokeDiv = document.getElementById("joke");
+    const metaDiv = document.getElementById("meta");
+    const copyBtn = document.getElementById("copyBtn");
+    const tweetBtn = document.getElementById("tweetBtn");
+
+    async function fetchJoke() {
+      btn.disabled = true;
+      btn.textContent = "Loading…";
+      jokeDiv.textContent = "";
+      metaDiv.textContent = "";
+
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error("Network error: " + res.status);
+        const data = await res.json();
+        // JokeAPI returns either a 'joke' field or 'setup'/'delivery' for two-part jokes.
+        const text = data.joke ?? ((data.setup && data.delivery) ? (data.setup + " — " + data.delivery) : "No joke found.");
+        jokeDiv.textContent = text;
+        metaDiv.textContent = `Category: ${data.category || "Unknown"} · ID: ${data.id || "-"}`;
+      } catch (err) {
+        jokeDiv.textContent = "Failed to fetch a joke. Try again.";
+        metaDiv.textContent = String(err);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "New joke";
+      }
+    }
+
+    btn.addEventListener("click", fetchJoke);
+    // initial fetch
+    fetchJoke();
+
+    copyBtn.addEventListener("click", async () => {
+      const text = jokeDiv.textContent || "";
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => (copyBtn.textContent = "Copy"), 1200);
+      } catch {
+        alert("Could not copy. Please copy manually.");
+      }
+    });
+
+    tweetBtn.addEventListener("click", () => {
+      const text = (jokeDiv.textContent || "").slice(0, 240);
+      const url = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text + " #joke");
+      window.open(url, "_blank", "noopener");
+    });
+  </script>
+</body>
+</html>

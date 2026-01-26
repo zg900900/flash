@@ -1,0 +1,77 @@
+# GitHub Actions workflow: deploy to remote server via SSH + docker-compose
+name: Deploy to Remote via SSH
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.8.1
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Ensure remote path & pull code (git)
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            mkdir -p "${{ secrets.REMOTE_PATH }}"
+            if [ -d "${{ secrets.REMOTE_PATH }}/.git" ]; then
+              echo "Repository exists on remote, pulling latest..."
+              git -C "${{ secrets.REMOTE_PATH }}" fetch --all
+              git -C "${{ secrets.REMOTE_PATH }}" reset --hard origin/main
+            else
+              echo "Cloning repository on remote..."
+              git clone --depth 1 https://github.com/${{ github.repository }} "${{ secrets.REMOTE_PATH }}"
+            fi
+            cd "${{ secrets.REMOTE_PATH }}"
+            # ensure .env or any env files are present (you can modify as needed)
+            ls -la
+
+      - name: Remote: Docker login to GHCR (optional, if GHCR images are private)
+        if: ${{ secrets.GHCR_PAT != '' }}
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Remote: Pull images & restart with docker-compose
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.REMOTE_PATH }}"
+            # ensure docker-compose.yml exists at REMOTE_PATH
+            if [ ! -f docker-compose.yml ]; then
+              echo "docker-compose.yml not found in REMOTE_PATH; copying from repo"
+              cp ./docker-compose.yml "${{ secrets.REMOTE_PATH }}/docker-compose.yml" || true
+            fi
+            # Pull latest images (if using registry)
+            docker compose pull || true
+            # Start / recreate containers
+            docker compose up -d --remove-orphans
+            # Optional: show status
+            docker compose ps
+            docker compose logs --tail=50
