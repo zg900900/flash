@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "frontend/dist" }
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://backend.example.com/api/:path*"
+    },
+    {
+      "source": "/socket.io/:path*",
+      "destination": "https://backend.example.com/socket.io/:path*"
+    }
+  ]
+}
