@@ -223,7 +223,26 @@ chmod +x scripts/e2e_measurement_test.sh
   - `VITE_API_URL`（后端地址）
   - 其他前端用到的 `VITE_` 前缀变量
 
-也可以使用 GitHub Actions 自动部署到 Vercel（需在仓库 Secrets 添加 `VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID`）。详见 `deploy-vercel.yml` 示例（可按需添加）。
+也可以使用 GitHub Actions 自动部署到 Vercel（需在仓库 Secrets 添加 `VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID`）。
+
+**GitHub Actions 自动部署已配置：**
+
+工作流文件：`.github/workflows/vercel-deploy.yml`
+
+设置步骤：
+1. 在 Vercel Dashboard 获取必需信息：
+   - Token: https://vercel.com/account/tokens
+   - Project ID: 项目设置中查看
+   - Organization ID: 账户设置中查看
+
+2. 在 GitHub 仓库添加 Secrets（Settings → Secrets and variables → Actions）：
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+
+3. 推送到 main 分支自动触发部署，或手动触发工作流
+
+详细说明见 `VERCEL_DEPLOYMENT.md`。
 
 ---
 

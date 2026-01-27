@@ -40,14 +40,39 @@
    ```
 
 4. **部署到 Vercel**
+   
+   #### 方式1: 使用 GitHub Actions 自动部署（推荐）
+   
+   已配置 GitHub Actions 工作流（`.github/workflows/vercel-deploy.yml`），可自动部署到 Vercel。
+   
+   **设置步骤：**
+   
+   a. 在 Vercel Dashboard 中创建项目并获取必需的信息：
+      - 访问 https://vercel.com/account/tokens 创建一个新的 token
+      - 在项目设置中找到 Project ID
+      - 在账户设置中找到 Organization ID（Team ID）
+   
+   b. 在 GitHub 仓库中添加以下 Secrets（Settings → Secrets and variables → Actions）：
+      - `VERCEL_TOKEN`: 你的 Vercel token
+      - `VERCEL_ORG_ID`: 你的 Vercel Organization/Team ID
+      - `VERCEL_PROJECT_ID`: 你的 Vercel Project ID
+   
+   c. 推送代码到 main 分支，GitHub Actions 将自动部署
+   
+   d. 也可以手动触发部署：
+      - 进入 GitHub Actions 标签页
+      - 选择 "Deploy to Vercel" 工作流
+      - 点击 "Run workflow"
+   
+   #### 方式2: 使用 Vercel CLI 手动部署
    ```bash
-   # 方式1: 使用 Vercel CLI
    npm i -g vercel
+   cd frontend
    vercel --prod
-
-   # 方式2: 连接 GitHub 仓库到 Vercel
-   # 在 Vercel Dashboard 导入项目
    ```
+
+   #### 方式3: 连接 GitHub 仓库到 Vercel
+   在 Vercel Dashboard 导入项目，Vercel 会自动检测并部署
 
 ### 替代方案
 
