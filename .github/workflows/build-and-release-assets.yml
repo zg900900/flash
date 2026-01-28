@@ -1,0 +1,42 @@
+name: Build and Release Assets
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-images:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        service:
+          - name: backend
+            context: ./backend
+            dockerfile: Dockerfile
+          - name: measurement-service
+            context: ./measurement_service
+            dockerfile: Dockerfile
+          - name: measurement-worker
+            context: ./backend
+            dockerfile: worker.Dockerfile
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t flash-${{ matrix.service.name }}:latest \
+            -f ${{ matrix.service.context }}/${{ matrix.service.dockerfile }} \
+            ${{ matrix.service.context }}
+
+      - name: Save Docker image
+        run: |
+          docker save flash-${{ matrix.service.name }}:latest | gzip > flash-${{ matrix.service.name }}.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: flash-${{ matrix.service.name }}
+          path: flash-${{ matrix.service.name }}.tar.gz
+          retention-days: 30
