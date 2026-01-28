@@ -1,0 +1,49 @@
+name: Build and Release Docker Images as Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-and-save-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        run: |
+          docker build -t flash-backend:${{ github.event.inputs.version }} -f backend/Dockerfile backend/
+          docker save flash-backend:${{ github.event.inputs.version }} | gzip > backend-${{ github.event.inputs.version }}.tar.gz
+
+      - name: Build measurement-service image
+        run: |
+          docker build -t flash-measurement-service:${{ github.event.inputs.version }} -f measurement_service/Dockerfile measurement_service/
+          docker save flash-measurement-service:${{ github.event.inputs.version }} | gzip > measurement-service-${{ github.event.inputs.version }}.tar.gz
+
+      - name: Build measurement-worker image
+        run: |
+          docker build -t flash-measurement-worker:${{ github.event.inputs.version }} -f backend/worker.Dockerfile backend/
+          docker save flash-measurement-worker:${{ github.event.inputs.version }} | gzip > measurement-worker-${{ github.event.inputs.version }}.tar.gz
+
+      - name: Create Release with Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          generate_release_notes: true
+          draft: false
+          files: |
+            backend-${{ github.event.inputs.version }}.tar.gz
+            measurement-service-${{ github.event.inputs.version }}.tar.gz
+            measurement-worker-${{ github.event.inputs.version }}.tar.gz

@@ -1,0 +1,8 @@
+version: '3.8'
+
+# Worker-specific overrides
+services:
+  measurement-worker:
+    environment:
+      - LOG_LEVEL=debug
+      - WORKER_CONCURRENCY=2
