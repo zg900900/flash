@@ -23,7 +23,29 @@ git clone https://github.com/zg900900/flash.git
 cd flash
 ```
 
-### 2. Run the start script
+### 2. Create MinIO bucket (first time only)
+
+The S3/MinIO bucket needs to be created before first use. After starting MinIO, create the bucket:
+
+```bash
+# Option 1: Using MinIO Console (recommended for first-time users)
+# 1. Start only MinIO first:
+docker compose up -d minio
+
+# 2. Visit http://localhost:9001
+# 3. Login with minioadmin/minioadmin
+# 4. Create bucket named "measurements"
+
+# Option 2: Using docker exec
+docker compose up -d minio
+sleep 5
+docker compose exec minio mc alias set local http://localhost:9000 minioadmin minioadmin
+docker compose exec minio mc mb local/measurements
+
+# Option 3: The start.sh script will handle services, but you need to create bucket manually after first run
+```
+
+### 3. Run the start script
 
 ```bash
 chmod +x start.sh

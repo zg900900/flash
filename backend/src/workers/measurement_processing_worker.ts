@@ -14,10 +14,15 @@ const worker = new Worker(
     try {
       const { fileKey } = job.data;
 
-      // Call measurement service
-      const response = await axios.post(`${MEASUREMENT_SERVICE_URL}/api/measure`, {
-        file_key: fileKey,
-      });
+      // Call measurement service with file key
+      const response = await axios.post(
+        `${MEASUREMENT_SERVICE_URL}/api/measure`,
+        { file_key: fileKey },
+        { 
+          timeout: 60000, // 60 second timeout
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
 
       const result = {
         jobId: job.id,
@@ -49,7 +54,7 @@ worker.on('completed', (job) => {
 });
 
 worker.on('failed', (job, err) => {
-  console.error(`Job ${job?.id} has failed with error:`, err.message);
+  console.error(`Job ${job?.id} has failed with error:`, err);
 });
 
 console.log('Measurement processing worker started');

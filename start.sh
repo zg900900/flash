@@ -10,7 +10,7 @@ echo "1) Show merged compose config (validation)..."
 docker compose ${COMPOSE_FILES} config || { echo "docker compose config failed"; exit 1; }
 
 echo "2) Build images (plain output)..."
-docker compose build --no-cache --progress=plain backend measurement-service measurement-worker
+docker compose build --progress=plain backend measurement-service measurement-worker
 
 echo "3) Start services"
 docker compose ${COMPOSE_FILES} up -d

@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const s3Client = new S3Client({
@@ -30,11 +30,11 @@ export async function uploadToS3(
 }
 
 export async function getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
-  const command = new PutObjectCommand({
+  const command = new GetObjectCommand({
     Bucket: S3_BUCKET,
     Key: key,
   });
 
-  const url = await getSignedUrl(s3Client, command as any, { expiresIn });
+  const url = await getSignedUrl(s3Client, command, { expiresIn });
   return url;
 }
