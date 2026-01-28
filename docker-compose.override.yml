@@ -1,0 +1,15 @@
+version: '3.8'
+
+# Override file for local development
+services:
+  backend:
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./backend/src:/app/src
+
+  measurement-service:
+    environment:
+      - LOG_LEVEL=debug
+    volumes:
+      - ./measurement_service/app:/app/app
