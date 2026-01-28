@@ -3,6 +3,9 @@ name: Build and Release Assets
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-images:
     runs-on: ubuntu-latest
