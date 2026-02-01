@@ -1,33 +1,43 @@
 #!/usr/bin/env bash
 set -euo pipefail
-COMPOSE_FILES="-f docker-compose.yml -f docker-compose.override.yml -f docker-compose.worker.override.yml"
-ENV_FILE=".env"
 
-# Note: To use custom worker, replace docker-compose.worker.override.yml with docker-compose.worker.custom.override.yml
-# To add environment file, append: --env-file ${ENV_FILE} to docker compose commands
+# ANSI color codes
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
 
-echo "1) Show merged compose config (validation)..."
+COMPOSE_FILES='-f docker-compose.yml -f docker-compose.override.yml -f docker-compose.worker.override.yml'
+ENV_FILE='.env'
+
+echo -e "${BLUE}1) Cleaning up previous environment...${NC}"
+docker compose ${COMPOSE_FILES} down --remove-orphans
+
+echo -e "${BLUE}2) Show merged compose config (validation)...${NC}"
 docker compose ${COMPOSE_FILES} config || { echo "docker compose config failed"; exit 1; }
 
-echo "2) Build images (plain output)..."
-docker compose build --progress=plain backend measurement-service measurement-worker
+echo -e "${BLUE}3) Build images (pulling latest bases)...${NC}"
+docker compose build --pull --progress=plain backend measurement-service measurement-worker
 
-echo "3) Start services"
+echo -e "${BLUE}4) Start services${NC}"
 docker compose ${COMPOSE_FILES} up -d
 
-echo "4) Wait for backend healthcheck (http://localhost:4000/api/health)..."
+echo -e "${BLUE}5) Wait for backend healthcheck (http://localhost:4000/api/health)...${NC}"
 # Wait up to 120s
 for i in {1..24}; do
   if curl -sSf http://localhost:4000/api/health >/dev/null 2>&1; then
-    echo "Backend healthy."
+    echo -e "${GREEN}Backend healthy.${NC}"
     break
   fi
   echo "Waiting for backend... ($i/24)"
   sleep 5
 done
 
-echo "5) Show service statuses"
+echo -e "${BLUE}6) Show service statuses${NC}"
 docker compose ps
 
-echo "6) Tailing logs (backend last 200 lines)"
+echo -e "${BLUE}7) Auto-create MinIO bucket (if not exists)${NC}"
+docker compose exec -T minio mc alias set local http://localhost:9000 minioadmin minioadmin >/dev/null 2>&1 || true
+docker compose exec -T minio mc mb local/measurements >/dev/null 2>&1 || true
+
+echo -e "${BLUE}8) Tailing logs (backend last 200 lines)${NC}"
 docker compose logs --tail=200 backend
