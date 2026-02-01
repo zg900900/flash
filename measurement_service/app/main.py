@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import boto3
 from botocore.client import Config
 import os
+import uuid
 from io import BytesIO
 from datetime import datetime
 from app.measure import perform_measurement
@@ -26,6 +27,15 @@ s3_client = boto3.client(
     config=Config(signature_version='s3v4')
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Ensure bucket exists on startup"""
+    try:
+        s3_client.head_bucket(Bucket=S3_BUCKET)
+    except:
+        print(f"Bucket {S3_BUCKET} not found, creating...")
+        s3_client.create_bucket(Bucket=S3_BUCKET)
+
 class MeasureRequest(BaseModel):
     file_key: str
 
@@ -47,9 +57,8 @@ async def measure_from_key(request: MeasureRequest):
         # Perform measurement
         measurement_result = perform_measurement(image_bytes)
         
-        # Generate result key for S3
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        result_key = f"results/{timestamp}_result.jpg"
+        # Generate unique result key using UUID
+        result_key = f"results/{uuid.uuid4()}.jpg"
         
         # Upload original image to S3 (as result/mask placeholder)
         s3_client.put_object(
@@ -67,6 +76,8 @@ async def measure_from_key(request: MeasureRequest):
         )
         
         return JSONResponse(content={
+            "job_id": str(uuid.uuid4()),
+            "processed_at": datetime.utcnow().isoformat(),
             "measurement": measurement_result,
             "result_key": result_key,
             "presigned_url": presigned_url
@@ -79,20 +90,13 @@ async def measure_from_key(request: MeasureRequest):
 async def measure_from_upload(file: UploadFile = File(...)):
     """
     Accept image file upload, perform measurement, upload result to S3, and return result.
-    This endpoint is kept for direct file uploads without S3.
     """
     try:
-        # Read file content
         image_bytes = await file.read()
-        
-        # Perform measurement
         measurement_result = perform_measurement(image_bytes)
         
-        # Generate result key for S3
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        result_key = f"results/{timestamp}_{file.filename}"
+        result_key = f"results/{uuid.uuid4()}_{file.filename}"
         
-        # Upload original image to S3 (as result/mask placeholder)
         s3_client.put_object(
             Bucket=S3_BUCKET,
             Key=result_key,
@@ -100,7 +104,6 @@ async def measure_from_upload(file: UploadFile = File(...)):
             ContentType=file.content_type or 'image/jpeg'
         )
         
-        # Generate presigned URL
         presigned_url = s3_client.generate_presigned_url(
             'get_object',
             Params={'Bucket': S3_BUCKET, 'Key': result_key},
@@ -108,6 +111,8 @@ async def measure_from_upload(file: UploadFile = File(...)):
         )
         
         return JSONResponse(content={
+            "job_id": str(uuid.uuid4()),
+            "processed_at": datetime.utcnow().isoformat(),
             "measurement": measurement_result,
             "result_key": result_key,
             "presigned_url": presigned_url
@@ -115,7 +120,3 @@ async def measure_from_upload(file: UploadFile = File(...)):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Measurement failed: {str(e)}")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
