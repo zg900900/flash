@@ -9,7 +9,7 @@ const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
 const worker = new Worker(
   'measurements',
   async (job) => {
-    console.log(`Processing job ${job.id}: ${JSON.stringify(job.data)}`);
+    console.log(`[Worker] Processing job ${job.id}: ${JSON.stringify(job.data)}`);
 
     try {
       const { fileKey } = job.data;
@@ -26,7 +26,8 @@ const worker = new Worker(
 
       const result = {
         jobId: job.id,
-        status: 'completed',
+        status: 'done', // Fixed: Frontend expects 'done' status
+        fileKey: fileKey,
         measurement: response.data,
         timestamp: new Date().toISOString(),
       };
@@ -34,10 +35,10 @@ const worker = new Worker(
       // Store result in memory
       storeMeasurementResult(job.id as string, result);
 
-      console.log(`Job ${job.id} completed:`, result);
+      console.log(`[Worker] Job ${job.id} marked as done:`, result);
       return result;
     } catch (error) {
-      console.error(`Job ${job.id} failed:`, error);
+      console.error(`[Worker] Job ${job.id} failed:`, error);
       throw error;
     }
   },
@@ -50,11 +51,11 @@ const worker = new Worker(
 );
 
 worker.on('completed', (job) => {
-  console.log(`Job ${job.id} has completed`);
+  console.log(`[Worker] Job ${job.id} has completed successfully`);
 });
 
 worker.on('failed', (job, err) => {
-  console.error(`Job ${job?.id} has failed with error:`, err);
+  console.error(`[Worker] Job ${job?.id} has failed with error:`, err);
 });
 
-console.log('Measurement processing worker started');
+console.log('Measurement processing worker started and listening on "measurements" queue');
