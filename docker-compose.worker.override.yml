@@ -1,0 +1,7 @@
+version: '3.8'
+
+services:
+  measurement-worker:
+    environment:
+      LOG_LEVEL: debug
+      NODE_ENV: development
